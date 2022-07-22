@@ -42,68 +42,7 @@ def type_count(type_dict_mb):
             apl_ct += 1
 
 
-def test_network_degeneration(G, func, n_passes, weight_key, sum_min, b_or_c="B", decomp=False, dv=np.zeros(1),
-                              spread_rate=1):
-    print("start", weight_key)
-    G_decomp = G
-    nodelist = G_decomp.nodes()
-    decomp_df = pd.DataFrame()
-    names = list(G_decomp.nodes)
-    i = 0
-    m = nx.adjacency_matrix(G_decomp).toarray()
-    sum_num = np.sum(m)
-    edges = np.sum(m > 0)
-    n_edges = edges
-    o_sum_num = sum_num
-
-    while edges / n_edges > sum_min:
-        if b_or_c == "B":
-            G_b = nx.betweenness_centrality(G_decomp, weight=weight_key)
-            data_df = pd.DataFrame(G_b, index=["Betweenness"]).T
-        elif b_or_c == "s":
-            G_b = nx.current_flow_betweenness_centrality(G_decomp.to_undirected(), weight=weight_key)
-            data_df = pd.DataFrame(G_b, index=["Current"]).T
-        elif b_or_c == "d":
-            G_bi = nx.in_degree_centrality(G_decomp)
-            G_bo = nx.out_degree_centrality(G_decomp)
-            data_df = pd.DataFrame(G_bi, index=["In-Degree Cenrality"]).T
-            data_df["Out-Degree Cenrality"] = G_bo
-        else:
-            G_b = nx.eigenvector_centrality(G_decomp, weight=weight_key)
-            data_df = pd.DataFrame(G_b, index=["Eigen Cenrality"]).T
-        data_df["Degree"] = data_df.index.map(G_decomp.degree)
-        neighbor_deg = nx.average_neighbor_degree(G_decomp, weight=weight_key, source='in', target='out')
-        data_df["Neighbor Degree"] = data_df.index.map(neighbor_deg)
-        data_df["Density"] = nx.density(G_decomp)
-        data_df["Transitivity"] = nx.transitivity(G_decomp)
-        data_df["Reciprocity"] = nx.reciprocity(G_decomp, nodes=nodelist)
-        data_df["Iter"] = i
-
-        A = nx.adjacency_matrix(G_decomp, weight=weight_key).toarray()
-        sum_num = np.sum(A)
-        edges = np.sum(A > 0)
-        data_df["Sum"] = sum_num
-        data_df["Sum Fraction"] = sum_num / o_sum_num
-
-        if not decomp:
-            print(sum_num, np.sum(A > 0), sum_num / o_sum_num, np.max(A), np.min(A))
-
-            A = func(A, n_passes)
-
-        else:
-            print(sum_num, np.sum(A > 0), sum_num / o_sum_num, np.max(A), np.min(A), np.sum(dv), np.sum(dv > 0))
-
-            A, dv = func(A, dv, n_passes, .05, spread_rate)
-        ad = pd.DataFrame(A, columns=nodelist, index=nodelist)
-
-        G_decomp = nx.from_pandas_adjacency(ad, create_using=nx.DiGraph())
-
-        decomp_df = pd.concat([decomp_df, data_df])
-        i += 1
-    return decomp_df
-
-
-def preferential_detachment(weight_matrix, decay_vector, n_passes, p=.05, spread_rate=1):
+def preferential_detachment(weight_matrix, decay_vector, n_passes, p, spread_rate):
     weights_mask = weight_matrix > 0
 
     sh = weight_matrix.shape
@@ -134,7 +73,7 @@ def preferential_detachment(weight_matrix, decay_vector, n_passes, p=.05, spread
     return weight_matrix, decay_vector
 
 
-def binomial_detachment(weight_matrix, decay_vector, n_pass, p=.1, spread_rate=1):
+def binomial_detachment(weight_matrix, decay_vector, n_passes, p, spread_rate):
     # Degeneration model has base prob that an edge is deleted, p
 
     weights_mask = weight_matrix > 0
@@ -147,7 +86,7 @@ def binomial_detachment(weight_matrix, decay_vector, n_pass, p=.1, spread_rate=1
     n_nodes = sh[0]
     osum = np.sum(weight_matrix)
     decay_matrix = weights_mask
-    for i in range(n_pass):
+    for i in range(n_passes):
 
         decay_matrix = weights_mask * decay_vector
         if np.sum(decay_matrix) == 0:
@@ -167,7 +106,7 @@ def binomial_detachment(weight_matrix, decay_vector, n_pass, p=.1, spread_rate=1
     return weight_matrix, decay_vector
 
 
-def random_detachment(weight_matrix, n_passes, p=.02):
+def random_detachment(weight_matrix, n_passes, p):
     # Every synapse has an equal chance to be deleted, p
     sh = weight_matrix.shape
     weights_mask = weight_matrix > 0
@@ -180,3 +119,12 @@ def random_detachment(weight_matrix, n_passes, p=.02):
 
     return weight_matrix
 
+
+def perform_ablation(graph, func, n_passes, weight_key, decay_vector):
+
+    A = nx.adjacency_matrix(graph, weight=weight_key).toarray()
+
+    if func == random_detachment:
+        return func(A, n_passes, 0.02)
+    else:
+        return func(A, decay_vector, n_passes, 0.05, 1)

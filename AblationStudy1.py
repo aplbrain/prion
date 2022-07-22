@@ -25,12 +25,11 @@ table = table.rename(columns={"w.weight": "weight"})
 
 mb_graph, type_dict_mb = preprocess_df(table)
 
-mb_df_random = test_network_degeneration(G=mb_graph, func=random_detachment, n_passes=1, weight_key='weight', sum_min=0.25, b_or_c="d")
-mb_df_binomial = test_network_degeneration(G=mb_graph, func=binomial_detachment, n_passes=1, weight_key='weight', sum_min=0.25, b_or_c="d")
-mb_df_preferential = test_network_degeneration(G=mb_graph, func=preferential_detachment, n_passes=1, weight_key='weight', sum_min=0.25, b_or_c="d")
+mb_wm_random = perform_ablation(graph=mb_graph, func=random_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
+mb_wm_binomial, dv_binomial = perform_ablation(graph=mb_graph, func=binomial_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
+mb_wm_preferential, dv_preferential = perform_ablation(graph=mb_graph, func=preferential_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
 
-
-
+print("hello")
 
 
 
