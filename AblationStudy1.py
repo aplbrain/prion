@@ -23,11 +23,16 @@ for c1 in types:
         table = pd.concat([table, lh_table])
 table = table.rename(columns={"w.weight": "weight"})
 
-mb_graph, type_dict_mb = preprocess_df(table)
+mb_graph, type_dict_mb, new_matrix = preprocess_df(table)
 
-mb_wm_random = perform_ablation(graph=mb_graph, func=random_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
-mb_wm_binomial, dv_binomial = perform_ablation(graph=mb_graph, func=binomial_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
-mb_wm_preferential, dv_preferential = perform_ablation(graph=mb_graph, func=preferential_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1))
+mb_wm_random = perform_ablation(graph=mb_graph, func=random_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1), threshold=0)
+mb_wm_binomial, dv_binomial = perform_ablation(graph=mb_graph, func=binomial_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1), threshold=0)
+mb_wm_preferential, dv_preferential = perform_ablation(graph=mb_graph, func=preferential_detachment, n_passes=1, weight_key='weight', decay_vector=np.zeros(1), threshold=0)
+mb_wm_calcium = perform_ablation(graph=mb_graph, func=calcium_detachment, n_passes=10, weight_key='weight', decay_vector=0, threshold=100)
+mb_wm_random2 = perform_ablation2(new_matrix, random_detachment, 1, np.zeros(1), 0)
+mb_wm_binomial2, dv_binomial2 = perform_ablation2(new_matrix, binomial_detachment, 1, 0, 0)
+mb_wm_preferential2, dv_preferential2 = perform_ablation2(new_matrix, preferential_detachment, 1, 0, 0)
+mb_wm_calcium2 = perform_ablation2(new_matrix, calcium_detachment, 1, 0, 0, 1000)
 
 print("hello")
 

@@ -4,6 +4,7 @@ import neuprint
 from neuprint import NeuronCriteria as NC
 import networkx as nx
 import pandas as pd
+from neuprint.utils import connection_table_to_matrix
 import copy
 from tqdm import tqdm
 
@@ -19,7 +20,9 @@ def preprocess_df(table):
         row = mb_neurons[0].iloc[i]
         type_dict_mb[row.bodyId] = row.type
     nx.set_node_attributes(mb_graph, type_dict_mb, "type")
-    return mb_graph, type_dict_mb
+
+    new_matrix = connection_table_to_matrix(table[["a.type", "b.type", "weight"]], ['a.type', 'b.type'], 'weight', ['a.type', 'b.type'])
+    return mb_graph, type_dict_mb, new_matrix
 
 
 def type_count(type_dict_mb):
@@ -120,11 +123,44 @@ def random_detachment(weight_matrix, n_passes, p):
     return weight_matrix
 
 
-def perform_ablation(graph, func, n_passes, weight_key, decay_vector):
+def calcium_detachment(weight_matrix, n_passes, threshold):
+
+    for i in range(n_passes):
+        for source in range(len(weight_matrix)):
+            for target in range(len(weight_matrix)):
+                if weight_matrix[source][target] == 0:
+                    break
+
+                if weight_matrix[target][source] == 0:
+                    break
+
+                weight_matrix[source][target] += 2*i
+                if weight_matrix[source][target] >= threshold:
+                    weight_matrix[source][target] = 0
+
+                weight_matrix[target][source] += 2*i
+                if weight_matrix[target][source] >= threshold:
+                    weight_matrix[target][source] = 0
+    return weight_matrix
+
+
+def perform_ablation(graph, func, n_passes, weight_key, decay_vector, threshold):
 
     A = nx.adjacency_matrix(graph, weight=weight_key).toarray()
 
     if func == random_detachment:
         return func(A, n_passes, 0.02)
+    elif func == calcium_detachment:
+        return func(A, n_passes, threshold)
     else:
         return func(A, decay_vector, n_passes, 0.05, 1)
+
+
+def perform_ablation2(weight_matrix, func, n_passes, decay_vector, threshold):
+
+    if func == random_detachment:
+        return func(weight_matrix, n_passes, 0.02)
+    elif func == calcium_detachment:
+        return func(weight_matrix, n_passes, threshold)
+    else:
+        return func(weight_matrix, decay_vector, n_passes, 0.05, 1)
